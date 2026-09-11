@@ -1,42 +1,42 @@
 <div align="center">
 
   <h1>devops-pipeline-templates</h1>
-  <p><strong>Reusable DevSecOps GitHub Actions Workflows for Enterprise CI/CD Standardization</strong></p>
+  <p><strong>Plantillas Reutilizables de CI/CD para GitHub Actions con Enfoque DevSecOps</strong></p>
 
   <p>
     <img src="https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=flat-square&logo=github-actions&logoColor=white" alt="GitHub Actions" />
-    <img src="https://img.shields.io/badge/Security_Scan-Aquasec_Trivy-00AEEF?style=flat-square&logo=trivy&logoColor=white" alt="Trivy" />
-    <img src="https://img.shields.io/badge/Containers-Docker_Buildx-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
-    <img src="https://img.shields.io/badge/IaC_Quality-Terraform_Lint-7B42BC?style=flat-square&logo=terraform&logoColor=white" alt="Terraform" />
-    <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/badge/Escaneo_de_Seguridad-Aquasec_Trivy-00AEEF?style=flat-square&logo=trivy&logoColor=white" alt="Trivy" />
+    <img src="https://img.shields.io/badge/Contenedores-Docker_Buildx-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
+    <img src="https://img.shields.io/badge/Calidad_IaC-Terraform_Lint-7B42BC?style=flat-square&logo=terraform&logoColor=white" alt="Terraform" />
+    <img src="https://img.shields.io/badge/Licencia-MIT-blue?style=flat-square" alt="Licencia" />
   </p>
 
 </div>
 
 ---
 
-### Overview
+### Descripción General
 
-`devops-pipeline-templates` is a collection of production-hardened, reusable GitHub Actions workflows designed to eliminate CI/CD pipeline duplication, enforce container security scanning, and automate GitOps releases across organizations.
+`devops-pipeline-templates` es un catálogo de flujos de trabajo reutilizables de **GitHub Actions** diseñados para estandarizar el ciclo de entrega continua (CI/CD), eliminar código duplicado y aplicar políticas estrictas de seguridad de contenedores (**DevSecOps**) en proyectos empresariales.
 
-By referencing these central workflows via `workflow_call`, engineering teams can enforce security gates (such as failing builds on `CRITICAL` CVEs) without maintaining ad-hoc CI scripts.
+Al consumir estos flujos mediante `workflow_call`, los equipos de desarrollo e infraestructura garantizan barreras automáticas de calidad (como el bloqueo de compilaciones ante vulnerabilidades críticas de seguridad) sin necesidad de reescribir pipelines en cada repositorio.
 
 ---
 
-### Workflow Catalog
+### Catálogo de Flujos de Trabajo
 
-#### 1. Docker Buildx & Security Scan (`docker-build-scan.yml`)
-- **Engine:** Docker Buildx with GitHub Actions caching (`cache-from/to: type=gha`).
-- **DevSecOps Gate:** Integrated Aquasec Trivy vulnerability scanner.
-- **Reporting:** Exports SARIF vulnerability reports directly into the GitHub Security tab.
-- **Publishing:** Publishes container images only if vulnerability criteria pass.
+#### 1. Construcción Docker y Escaneo de Vulnerabilidades (`docker-build-scan.yml`)
+- **Motor:** Docker Buildx con almacenamiento de caché multicapa en GitHub Actions (`cache-from/to: type=gha`).
+- **Control DevSecOps:** Integración nativa con el escáner de vulnerabilidades **Aquasec Trivy**.
+- **Reportes:** Exportación de reportes SARIF directos a la pestaña *Security* del repositorio en GitHub.
+- **Publicación:** Publica la imagen en el registro de contenedores únicamente si supera el umbral de seguridad.
 
 ```yaml
 jobs:
   build:
     uses: NeoScraids/devops-pipeline-templates/.github/workflows/docker-build-scan.yml@main
     with:
-      image_name: ghcr.io/myorg/microservice
+      image_name: ghcr.io/mi-organizacion/microservicio
       image_tag: ${{ github.sha }}
       fail_on_vulnerabilities: true
     secrets:
@@ -44,9 +44,9 @@ jobs:
       REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-#### 2. Terraform Quality & Lint (`terraform-quality.yml`)
-- **Checks:** `terraform fmt -check -recursive` and `terraform validate`.
-- **Backend Bypass:** Runs `terraform init -backend=false` for fast validation without requiring cloud state access.
+#### 2. Calidad y Validación de Terraform (`terraform-quality.yml`)
+- **Verificaciones:** Formateo canónico con `terraform fmt -check -recursive` y validación sintáctica con `terraform validate`.
+- **Modo Aislado:** Ejecuta `terraform init -backend=false` para realizar validaciones rápidas sin requerir acceso al backend remoto.
 
 ```yaml
 jobs:
@@ -57,15 +57,15 @@ jobs:
       terraform_version: 1.7.0
 ```
 
-#### 3. GitOps Synchronizer (`gitops-sync.yml`)
-- **Mechanism:** Automatically clones the target GitOps repository (e.g. `k8s-gitops-catalog`), replaces the container image tag with the freshly built SHA, and creates a signed commit back to trigger ArgoCD reconciliation.
+#### 3. Sincronización GitOps (`gitops-sync.yml`)
+- **Mecanismo:** Clona automáticamente el repositorio de manifiestos GitOps (ej. `k8s-gitops-catalog`), actualiza la etiqueta de la imagen con el nuevo SHA generado y realiza el commit para activar la reconciliación de ArgoCD.
 
 ```yaml
 jobs:
   sync:
     uses: NeoScraids/devops-pipeline-templates/.github/workflows/gitops-sync.yml@main
     with:
-      manifest_repo: myorg/k8s-gitops-catalog
+      manifest_repo: mi-organizacion/k8s-gitops-catalog
       deployment_file: apps/api/deployment.yaml
       new_tag: ${{ github.sha }}
     secrets:
@@ -74,33 +74,33 @@ jobs:
 
 ---
 
-### Repository Layout
+### Estructura del Repositorio
 
 ```text
 devops-pipeline-templates/
 ├── .github/
 │   └── workflows/
-│       ├── docker-build-scan.yml     # Reusable container build + Trivy scanner
-│       ├── gitops-sync.yml           # Reusable manifest image tag updater
-│       └── terraform-quality.yml     # Reusable IaC format & syntax validator
+│       ├── docker-build-scan.yml     # Construcción de contenedor + escáner Trivy
+│       ├── gitops-sync.yml           # Actualizador de etiquetas en catálogo GitOps
+│       └── terraform-quality.yml     # Validador de formato y sintaxis para Terraform
 ├── examples/
-│   └── caller-workflow.yml          # End-to-end integration sample
+│   └── caller-workflow.yml          # Ejemplo de integración de extremo a extremo
 └── README.md
 ```
 
 ---
 
-### Security Policy & Vulnerability Gates
+### Políticas de Severidad y Barreras de Seguridad
 
-| Severity | Default Action | Overridable |
+| Severidad | Acción por Defecto | Modificable |
 | :--- | :--- | :--- |
-| `CRITICAL` | Fails pipeline with exit code 1 | Yes (`fail_on_vulnerabilities: false`) |
-| `HIGH` | Fails pipeline with exit code 1 | Yes (`fail_on_vulnerabilities: false`) |
-| `MEDIUM` | Logged and reported in SARIF | Informational |
-| `LOW` | Logged and reported in SARIF | Informational |
+| `CRITICAL` | Falla el pipeline con código de salida 1 | Sí (`fail_on_vulnerabilities: false`) |
+| `HIGH` | Falla el pipeline con código de salida 1 | Sí (`fail_on_vulnerabilities: false`) |
+| `MEDIUM` | Registrado y reportado en SARIF | Informativo |
+| `LOW` | Registrado y reportado en SARIF | Informativo |
 
 ---
 
-### License
+### Licencia
 
-Distributed under the MIT License. Developed and maintained by [Brandon Mendieta](https://github.com/NeoScraids).
+Distribuido bajo la Licencia MIT. Desarrollado y mantenido por [Brandon Mendieta](https://github.com/NeoScraids).
