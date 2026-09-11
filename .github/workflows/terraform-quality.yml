@@ -1,0 +1,41 @@
+name: Reusable Terraform Quality & Security Gate
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        description: "Directory containing Terraform files"
+        required: false
+        default: "."
+        type: string
+      terraform_version:
+        description: "Version of Terraform CLI to install"
+        required: false
+        default: "1.7.0"
+        type: string
+
+jobs:
+  terraform-audit:
+    name: Terraform Lint, Fmt & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup HashiCorp Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Verify Formatting (terraform fmt)
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform fmt -check -recursive
+
+      - name: Initialize Providers (Local validation mode)
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform init -backend=false
+
+      - name: Validate Configuration Syntax (terraform validate)
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform validate

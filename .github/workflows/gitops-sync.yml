@@ -1,0 +1,50 @@
+name: Reusable GitOps Deployment Synchronizer
+
+on:
+  workflow_call:
+    inputs:
+      manifest_repo:
+        description: "Target GitOps manifest repository (e.g. org/k8s-gitops-catalog)"
+        required: true
+        type: string
+      deployment_file:
+        description: "Path to the manifest file to update (e.g. apps/payment/deployment.yaml)"
+        required: true
+        type: string
+      new_tag:
+        description: "New image tag to inject into the deployment manifest"
+        required: true
+        type: string
+      target_branch:
+        description: "Branch in the GitOps repo to commit to"
+        required: false
+        default: "main"
+        type: string
+    secrets:
+      GITOPS_PUSH_TOKEN:
+        description: "Personal Access Token with repository write permissions"
+        required: true
+
+jobs:
+  sync-gitops:
+    name: Update Manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitOps Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.manifest_repo }}
+          token: ${{ secrets.GITOPS_PUSH_TOKEN }}
+          ref: ${{ inputs.target_branch }}
+
+      - name: Update Container Image Tag
+        run: |
+          sed -i -E "s|(image: .*:)[^ ]+|\1${{ inputs.new_tag }}|g" "${{ inputs.deployment_file }}"
+
+      - name: Commit and Push Image Bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ inputs.deployment_file }}"
+          git diff-index --quiet HEAD || (git commit -m "chore(release): bump image tag to ${{ inputs.new_tag }}" && git push origin ${{ inputs.target_branch }})

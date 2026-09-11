@@ -1,0 +1,35 @@
+# Example: Caller workflow demonstrating how application repositories
+# reference and consume these centralized DevSecOps pipelines.
+
+name: Release Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  # 1. Build and security scan
+  build-and-scan:
+    uses: NeoScraids/devops-pipeline-templates/.github/workflows/docker-build-scan.yml@main
+    with:
+      image_name: ghcr.io/neoscraids/transaction-gateway
+      image_tag: ${{ github.sha }}
+      fail_on_vulnerabilities: true
+    secrets:
+      REGISTRY_USERNAME: ${{ github.actor }}
+      REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  # 2. Synchronize new tag with GitOps repository
+  gitops-delivery:
+    needs: build-and-scan
+    uses: NeoScraids/devops-pipeline-templates/.github/workflows/gitops-sync.yml@main
+    with:
+      manifest_repo: NeoScraids/k8s-gitops-catalog
+      deployment_file: apps/transaction-gateway/deployment.yaml
+      new_tag: ${{ github.sha }}
+      target_branch: main
+    secrets:
+      GITOPS_PUSH_TOKEN: ${{ secrets.GITOPS_DEPLOY_TOKEN }}
