@@ -26,12 +26,20 @@ on:
         required: false
         default: true
         type: boolean
+      build_args:
+        description: "Build-time variables passed to Docker as ARG (newline-separated KEY=VALUE pairs)"
+        required: false
+        default: ""
+        type: string
     secrets:
       REGISTRY_USERNAME:
         description: "Container registry authentication username"
         required: false
       REGISTRY_PASSWORD:
         description: "Container registry authentication password or token"
+        required: false
+      SLACK_WEBHOOK:
+        description: "Slack Incoming Webhook URL for failure notifications (optional)"
         required: false
 
 jobs:
@@ -64,6 +72,7 @@ jobs:
           file: ${{ inputs.dockerfile }}
           load: true
           tags: ${{ inputs.image_name }}:${{ inputs.image_tag }}
+          build-args: ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -92,3 +101,25 @@ jobs:
           tags: |
             ${{ inputs.image_name }}:${{ inputs.image_tag }}
             ${{ inputs.image_name }}:latest
+
+      - name: Notify Slack on Scan Failure
+        if: failure() && secrets.SLACK_WEBHOOK != ''
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":rotating_light: *Trivy scan failure* on `${{ inputs.image_name }}:${{ inputs.image_tag }}`",
+              "attachments": [
+                {
+                  "color": "danger",
+                  "fields": [
+                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
+                    { "title": "Workflow", "value": "${{ github.workflow }}", "short": true },
+                    { "title": "Run", "value": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>", "short": false }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
